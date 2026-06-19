@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Radar</title>
+    <meta name="description" content="Stay up to date with the latest BigQuery release notes and easily share updates on X/Twitter.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Main stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <svg class="logo-icon" viewBox="0 0 24 24" width="28" height="28">
+                    <path fill="currentColor" d="M12 .587l3.668 7.431 8.2 1.192-5.934 5.784 1.4 8.168L12 18.896l-7.334 3.857 1.4-8.168L.132 9.21l8.2-1.192L12 .587z"/>
+                </svg>
+                <div class="logo-text">
+                    <h1>BigQuery Release Radar</h1>
+                    <p>Track updates & share on X / Twitter</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="refresh-btn" class="btn btn-primary" title="Refresh release notes">
+                    <svg class="spinner-icon hidden" id="btn-spinner" viewBox="0 0 24 24" width="16" height="16">
+                        <circle class="path" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3"></circle>
+                    </svg>
+                    <svg class="refresh-icon" id="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.73-.73" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Refresh Feed</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- Filter panel -->
+            <section class="filter-bar">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Search release notes..." autocomplete="off">
+                </div>
+                <div class="filter-tags">
+                    <button class="filter-tag active" data-type="all">All</button>
+                    <button class="filter-tag" data-type="Feature">Features</button>
+                    <button class="filter-tag" data-type="Announcement">Announcements</button>
+                    <button class="filter-tag" data-type="Changed">Changes</button>
+                    <button class="filter-tag" data-type="Deprecated">Deprecated</button>
+                </div>
+            </section>
+
+            <div class="content-split">
+                <!-- Release Notes Feed -->
+                <section class="feed-section">
+                    <div id="loading-state" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Fetching BigQuery release notes...</p>
+                    </div>
+
+                    <div id="error-state" class="error-state hidden">
+                        <div class="error-icon">⚠️</div>
+                        <p id="error-message">Failed to load release notes.</p>
+                        <button id="retry-btn" class="btn btn-secondary">Retry</button>
+                    </div>
+
+                    <div id="empty-state" class="empty-state hidden">
+                        <p>No release notes found matching your criteria.</p>
+                    </div>
+
+                    <div id="feed-container" class="feed-container">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Composer Sidebar -->
+                <aside class="composer-sidebar">
+                    <div class="composer-card sticky-sidebar" id="composer-card">
+                        <div class="composer-header">
+                            <h3>X / Twitter Composer</h3>
+                            <span class="status-badge" id="composer-status">No note selected</span>
+                        </div>
+                        <div class="composer-body">
+                            <p class="composer-hint" id="composer-hint">
+                                Select any release note item from the feed to draft a tweet automatically.
+                            </p>
+                            
+                            <div class="composer-workspace hidden" id="composer-workspace">
+                                <div class="composer-source-preview">
+                                    <span class="preview-label">Selected Note:</span>
+                                    <div class="preview-text" id="selected-note-preview"></div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="tweet-textarea">Draft Tweet</label>
+                                    <textarea id="tweet-textarea" rows="8" placeholder="What's happening?"></textarea>
+                                </div>
+
+                                <div class="composer-footer">
+                                    <div class="char-counter" id="char-counter">
+                                        <span id="char-count">0</span> / <span id="char-limit">280</span>
+                                    </div>
+                                    <div class="composer-actions">
+                                        <button class="btn btn-icon" id="copy-tweet-btn" title="Copy to Clipboard">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                            </svg>
+                                            <span>Copy</span>
+                                        </button>
+                                        <button class="btn btn-primary" id="tweet-btn">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                            </svg>
+                                            <span>Post</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <p>BigQuery Release Radar &copy; 2026. Made with Flask, HTML, CSS, & JS.</p>
+        </footer>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">
+        <span id="toast-message">Copied to clipboard!</span>
+    </div>
+
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
