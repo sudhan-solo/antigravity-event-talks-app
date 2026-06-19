@@ -15,6 +15,8 @@ const errorState = document.getElementById('error-state');
 const emptyState = document.getElementById('empty-state');
 const btnSpinner = document.getElementById('btn-spinner');
 const btnIcon = document.getElementById('btn-icon');
+const exportCsvBtn = document.getElementById('export-csv-btn');
+const themeCheckbox = document.getElementById('theme-checkbox');
 
 // Composer DOM Elements
 const composerCard = document.getElementById('composer-card');
@@ -33,6 +35,16 @@ const toastMessage = document.getElementById('toast-message');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Theme Switch from LocalStorage
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        themeCheckbox.checked = true;
+        document.body.classList.add('light-theme');
+    } else {
+        themeCheckbox.checked = false;
+        document.body.classList.remove('light-theme');
+    }
+
     fetchReleaseNotes();
     setupEventListeners();
 });
@@ -74,6 +86,22 @@ function setupEventListeners() {
     
     // Share on Twitter
     tweetBtn.addEventListener('click', shareOnTwitter);
+
+    // Export to CSV
+    exportCsvBtn.addEventListener('click', exportToCSV);
+
+    // Theme Switch Change Listener
+    themeCheckbox.addEventListener('change', () => {
+        if (themeCheckbox.checked) {
+            document.body.classList.add('light-theme');
+            localStorage.setItem('theme', 'light');
+            showToast('Swapped to Light Theme');
+        } else {
+            document.body.classList.remove('light-theme');
+            localStorage.setItem('theme', 'dark');
+            showToast('Swapped to Dark Theme');
+        }
+    });
 }
 
 // Fetch data from Flask API
@@ -189,17 +217,38 @@ function renderFeed() {
                 itemCard.innerHTML = `
                     <div class="release-item-header">
                         <span class="type-badge">${item.type}</span>
-                        <button class="select-note-btn">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                            </svg>
-                            <span>${selectedItem && selectedItem.id === item.id ? 'Selected' : 'Select'}</span>
-                        </button>
+                        <div class="item-header-actions">
+                            <button class="copy-note-btn" title="Copy raw text of this update">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span>Copy</span>
+                            </button>
+                            <button class="select-note-btn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                </svg>
+                                <span>${selectedItem && selectedItem.id === item.id ? 'Selected' : 'Select'}</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="release-item-body">
                         ${item.html}
                     </div>
                 `;
+                
+                // Copy note raw text handler
+                const copyBtn = itemCard.querySelector('.copy-note-btn');
+                copyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(item.text).then(() => {
+                        showToast('Copied raw note to clipboard!');
+                    }).catch(err => {
+                        console.error('Copy failed: ', err);
+                        showToast('Copy failed!', 'error');
+                    });
+                });
                 
                 // Add click handler
                 itemCard.addEventListener('click', (e) => {
@@ -344,4 +393,51 @@ function showToast(message, type = 'success') {
     toastTimeout = setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
+}
+
+// Export currently filtered/searched release notes to CSV
+function exportToCSV() {
+    const csvRows = [];
+    // CSV headers
+    csvRows.push(['Date', 'Type', 'Content Text']);
+
+    let hasData = false;
+    releaseNotes.forEach(group => {
+        const filteredItems = group.items.filter(item => {
+            const matchesFilter = currentFilter === 'all' || item.type === currentFilter;
+            const matchesSearch = currentSearch === '' || 
+                                  item.text.toLowerCase().includes(currentSearch) ||
+                                  item.type.toLowerCase().includes(currentSearch) ||
+                                  group.date.toLowerCase().includes(currentSearch);
+            return matchesFilter && matchesSearch;
+        });
+
+        filteredItems.forEach(item => {
+            hasData = true;
+            // Escape double quotes by doubling them
+            const escapedText = item.text.replace(/"/g, '""');
+            csvRows.push([`"${group.date}"`, `"${item.type}"`, `"${escapedText}"`]);
+        });
+    });
+
+    if (!hasData) {
+        showToast('No data to export!', 'error');
+        return;
+    }
+
+    // Join rows with newlines
+    const csvContent = csvRows.map(row => row.join(',')).join('\n');
+    
+    // Create blob and download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `bigquery_release_notes_${currentFilter}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('Exported CSV successfully!');
 }

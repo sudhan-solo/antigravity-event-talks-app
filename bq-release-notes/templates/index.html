@@ -26,6 +26,21 @@
                 </div>
             </div>
             <div class="header-actions">
+                <div class="theme-toggle-wrapper">
+                    <span class="theme-toggle-label">Light Mode</span>
+                    <label class="theme-switch" for="theme-checkbox">
+                        <input type="checkbox" id="theme-checkbox" />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+                <button id="export-csv-btn" class="btn btn-secondary" title="Export current feed to CSV">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Export CSV</span>
+                </button>
                 <button id="refresh-btn" class="btn btn-primary" title="Refresh release notes">
                     <svg class="spinner-icon hidden" id="btn-spinner" viewBox="0 0 24 24" width="16" height="16">
                         <circle class="path" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3"></circle>
